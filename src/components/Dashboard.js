@@ -1,11 +1,9 @@
 import React,{useEffect,useState} from "react";
 import API from "../api";
-import logo from "../assets/logo.png";
 
 export default function Dashboard(){
 
 const [balance,setBalance] = useState(0);
-const [showBalance,setShowBalance] = useState(false);
 const [amount,setAmount] = useState("");
 const [pin,setPin] = useState("");
 const [history,setHistory] = useState([]);
@@ -21,11 +19,14 @@ loadBalance();
 loadHistory();
 },[]);
 
+
+/* LOAD BALANCE */
+
 const loadBalance = async()=>{
 
 try{
 
-const res = await API.get("/wallet/balance",headers);
+const res = await API.get(`/wallet/balance/${userId}`,headers);
 setBalance(res.data.balance);
 
 }
@@ -35,11 +36,14 @@ console.log("Balance error");
 
 };
 
+
+/* LOAD HISTORY */
+
 const loadHistory = async()=>{
 
 try{
 
-const res = await API.get("/wallet/history",headers);
+const res = await API.get(`/wallet/history/${userId}`,headers);
 setHistory(res.data);
 
 }
@@ -49,13 +53,21 @@ console.log("History error");
 
 };
 
+
+/* DEPOSIT */
+
 const deposit = async()=>{
 
 try{
 
 await API.post(
 "/wallet/transaction",
-{type:"deposit",amount,pin},
+{
+userId,
+type:"deposit",
+amount:Number(amount),
+pin
+},
 headers
 );
 
@@ -76,9 +88,12 @@ alert(err.response?.data || "Transaction Failed");
 
 };
 
-const openReceipt = (txn)=>{
 
-const text = `
+/* VIEW RECEIPT */
+
+const viewReceipt=(txn)=>{
+
+const text=`
 RURAL WALLET RECEIPT
 
 User ID : ${userId}
@@ -87,14 +102,27 @@ Transaction : ${txn.type}
 
 Amount : ₹${txn.amount}
 
-Receipt ID : ${txn.receiptId}
-
 Date : ${new Date(txn.date).toLocaleString()}
 `;
 
 setReceipt(text);
 
 };
+
+
+/* DOWNLOAD RECEIPT */
+
+const downloadReceipt=()=>{
+
+const blob=new Blob([receipt],{type:"text/plain"});
+const link=document.createElement("a");
+
+link.href=URL.createObjectURL(blob);
+link.download="receipt.txt";
+link.click();
+
+};
+
 
 return(
 
@@ -104,45 +132,36 @@ return(
 
 <div style={header}>
 
-<img src={logo} alt="logo" style={{height:"50px"}}/>
+<span style={{fontSize:"40px"}}>🏦</span>
 
-<h2 style={{marginLeft:"10px"}}>Rural Wallet Dashboard</h2>
+<h2>Rural Wallet Dashboard</h2>
 
 </div>
 
 
-{/* CARDS */}
+{/* USER ID + BALANCE + DEPOSIT */}
 
-<div style={cardContainer}>
+<div style={topContainer}>
+
+
+{/* USER ID */}
 
 <div style={card}>
 
 <h3>User ID</h3>
 
-<p>{userId}</p>
+<p style={{fontSize:"18px"}}>{userId}</p>
 
 </div>
 
+
+{/* BALANCE */}
 
 <div style={card}>
 
 <h3>Balance</h3>
 
-<p style={{fontSize:"18px"}}>
-
-{showBalance ? `₹${balance}` : "******"}
-
-</p>
-
-<span
-onMouseEnter={()=>setShowBalance(true)}
-onMouseLeave={()=>setShowBalance(false)}
-style={{cursor:"pointer",fontSize:"20px"}}
->
-👁
-</span>
-
-</div>
+<h2>₹{balance}</h2>
 
 </div>
 
@@ -171,6 +190,8 @@ style={input}
 <button style={btn} onClick={deposit}>
 Deposit
 </button>
+
+</div>
 
 </div>
 
@@ -208,10 +229,7 @@ Deposit
 
 <td>
 
-<button
-style={viewBtn}
-onClick={()=>openReceipt(txn)}
->
+<button style={viewBtn} onClick={()=>viewReceipt(txn)}>
 View
 </button>
 
@@ -234,37 +252,17 @@ View
 
 <div style={popupBox}>
 
-<h3>Receipt</h3>
+<h3>Transaction Receipt</h3>
 
-<pre style={{textAlign:"left"}}>{receipt}</pre>
+<pre>{receipt}</pre>
 
-<div style={{marginTop:"15px"}}>
-
-<button
-style={downloadBtn}
-onClick={()=>{
-
-const blob = new Blob([receipt],{type:"text/plain"});
-const link=document.createElement("a");
-
-link.href = URL.createObjectURL(blob);
-link.download = "receipt.txt";
-
-link.click();
-
-}}
->
+<button style={downloadBtn} onClick={downloadReceipt}>
 Download
 </button>
 
-<button
-style={closeBtn}
-onClick={()=>setReceipt(null)}
->
+<button style={closeBtn} onClick={()=>setReceipt(null)}>
 Close
 </button>
-
-</div>
 
 </div>
 
@@ -284,34 +282,38 @@ Close
 const page={
 padding:"40px",
 background:"#eef3f9",
-minHeight:"100vh"
+minHeight:"100vh",
+textAlign:"center"
 };
 
 const header={
 display:"flex",
+justifyContent:"center",
 alignItems:"center",
+gap:"10px",
 marginBottom:"30px"
 };
 
-const cardContainer={
+const topContainer={
 display:"flex",
-gap:"20px"
+justifyContent:"center",
+gap:"30px",
+flexWrap:"wrap"
 };
 
 const card={
 background:"white",
-padding:"20px",
+padding:"25px",
 borderRadius:"10px",
-width:"220px",
+width:"200px",
 boxShadow:"0 4px 10px rgba(0,0,0,0.1)"
 };
 
 const depositBox={
-marginTop:"30px",
 background:"white",
 padding:"25px",
 borderRadius:"10px",
-width:"350px",
+width:"300px",
 boxShadow:"0 4px 10px rgba(0,0,0,0.1)"
 };
 
@@ -370,11 +372,11 @@ padding:"8px 15px",
 background:"#0b3d91",
 color:"white",
 border:"none",
-cursor:"pointer"
+cursor:"pointer",
+marginRight:"10px"
 };
 
 const closeBtn={
-marginLeft:"10px",
 padding:"8px 15px",
 background:"red",
 color:"white",
